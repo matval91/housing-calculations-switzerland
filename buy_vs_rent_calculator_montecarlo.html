@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buy vs. Rent — NPV Calculator</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f5f3ee;
+  --surface: #ffffff;
+  --surface2: #f0ede6;
+  --border: rgba(0,0,0,0.10);
+  --border2: rgba(0,0,0,0.06);
+  --text: #1a1916;
+  --text2: #6b6760;
+  --text3: #9c9990;
+  --green: #0F6E56;
+  --green-bg: #e1f5ee;
+  --red: #993C1D;
+  --red-bg: #faece7;
+  --accent: #2a2522;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+header {
+  background: var(--accent);
+  color: #fff;
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+header h1 { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; }
+header .citation { font-size: 11px; opacity: 0.4; font-family: 'DM Mono', monospace; }
+
+.container { max-width: 1120px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+/* params */
+.params-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+
+.tab-bar { display: flex; border-bottom: 1px solid var(--border2); }
+.tab-btn {
+  flex: 1;
+  padding: 9px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text3);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: color 0.12s, border-color 0.12s;
+}
+.tab-btn:hover { color: var(--text2); }
+.tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+.tab-pane { display: none; padding: 1.1rem 1.25rem; }
+.tab-pane.active { display: block; }
+
+.field { margin-bottom: 1rem; }
+.field:last-child { margin-bottom: 0; }
+.field-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.field label { font-size: 13px; font-weight: 500; color: var(--text); }
+.field .val { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--accent); min-width: 65px; text-align: right; }
+.field .desc { font-size: 11px; color: var(--text3); margin-bottom: 5px; line-height: 1.5; }
+
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--surface2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+input[type=range]::-moz-range-thumb {
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+}
+
+/* results */
+.results-panel { display: flex; flex-direction: column; gap: 1rem; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.25rem; }
+.card-title { font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text3); margin-bottom: 0.9rem; }
+
+.metrics { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
+.metric { background: var(--surface2); border-radius: var(--radius-sm); padding: 0.75rem 0.9rem; }
+.metric .mlabel { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+.metric .mval { font-family: 'DM Mono', monospace; font-size: 19px; font-weight: 500; letter-spacing: -0.02em; }
+.mval.pos { color: var(--green); }
+.mval.neg { color: var(--red); }
+
+.spread-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--text3); margin-top: 8px; }
+.pill { display: inline-block; padding: 1px 9px; border-radius: 20px; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; }
+.pill.pos { background: var(--green-bg); color: var(--green); }
+.pill.neg { background: var(--red-bg); color: var(--red); }
+.pill.zero { background: var(--surface2); color: var(--text2); }
+
+.verdict { border-radius: var(--radius-sm); padding: 0.75rem 1rem; font-size: 13px; font-weight: 500; line-height: 1.5; margin-top: 8px; }
+.verdict.buy { background: var(--green-bg); color: var(--green); }
+.verdict.rent { background: var(--red-bg); color: var(--red); }
+.verdict.neutral { background: var(--surface2); color: var(--text2); }
+
+.chart-wrap { position: relative; height: 230px; }
+.chart-wrap canvas { display: block; }
+
+.breakdown-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .breakdown-grid { grid-template-columns: 1fr; } }
+.bsection h3 { font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text3); margin-bottom: 7px; }
+.brow { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border2); font-size: 12px; }
+.brow.total { border-bottom: none; border-top: 1px solid var(--border); margin-top: 3px; padding-top: 7px; font-weight: 500; font-size: 13px; }
+.brow .blab { color: var(--text2); }
+.brow .bnum { font-family: 'DM Mono', monospace; font-size: 12px; }
+
+footer { text-align: center; padding: 1.5rem; font-size: 11px; color: var(--text3); border-top: 1px solid var(--border2); margin-top: 1.5rem; }
+footer em { font-style: italic; }
+
+.mode-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.mode-btn:hover { border-color: var(--accent); color: var(--text); }
+.mode-btn.mode-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Buy vs. Rent — NPV Calculator</h1>
+  <span class="citation">Tabner, I.T. (2016) · Int. Review of Financial Analysis</span>
+</header>
+
+<div class="container">
+<div class="layout">
+
+  <!-- LEFT: Parameters -->
+  <div class="params-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.7rem 1.25rem;border-bottom:1px solid var(--border2);background:var(--surface2);">
+      <div>
+        <span style="font-size:13px;font-weight:500;">Mortgage type</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button id="mode-standard" class="mode-btn mode-active">Standard repayment</button>
+        <button id="mode-pledged" class="mode-btn">Pledged-asset (interest-only)</button>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="property">Property</button>
+      <button class="tab-btn" data-tab="rent">Rent</button>
+      <button class="tab-btn" data-tab="rates">Rates</button>
+      <button class="tab-btn" data-tab="tax">Tax</button>
+    </div>
+
+    <div class="tab-pane active" id="pane-property">
+      <div class="field">
+        <div class="field-header"><label>Purchase price (P&#8320;)</label><span class="val" id="v-p0"></span></div>
+        <div class="desc">Market price at the time of the tenure decision.</div>
+        <input type="range" id="p0" min="50000" max="2000000" step="5000" value="200000">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Loan-to-value ratio (%)</label><span class="val" id="v-ltv"></span></div>
+        <div class="desc">Proportion of purchase price financed by mortgage. Higher LTV = more leverage, higher risk to equity. Set 0% for cash purchase.</div>
+        <input type="range" id="ltv" min="0" max="95" step="5" value="50">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Holding period (years)</label><span class="val" id="v-T"></span></div>
+        <div class="desc">Expected duration of ownership before resale. The single most important input — transaction costs require 5&#8211;10 years to amortise.</div>
+        <input type="range" id="T" min="1" max="40" step="1" value="8">
+      </div>
+      <div class="field" id="field-mt">
+        <div class="field-header"><label>Mortgage term (years)</label><span class="val" id="v-mt"></span></div>
+        <div class="desc">Full repayment mortgage duration (standard repayment mode only). If holding period is shorter, outstanding principal is repaid at sale.</div>
+        <input type="range" id="mt" min="5" max="35" step="1" value="25">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Purchase costs (% of P&#8320;)</label><span class="val" id="v-pc"></span></div>
+        <div class="desc">Transaction taxes, legal, surveyor and arrangement fees. UK Stamp Duty can reach 7%+ on higher-value properties.</div>
+        <input type="range" id="pc" min="0" max="15" step="0.25" value="5">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Furnishing &amp; renovation (% of P&#8320;)</label><span class="val" id="v-f"></span></div>
+        <div class="desc">Upfront capital not incurred when renting. Treated as unrecoverable at resale.</div>
+        <input type="range" id="f" min="0" max="20" step="0.25" value="5">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Selling costs (% of sale price)</label><span class="val" id="v-sc"></span></div>
+        <div class="desc">Agent fees, legal costs and transaction taxes on resale. Deducted from future resale proceeds.</div>
+        <input type="range" id="sc" min="0" max="15" step="0.25" value="6">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Nominal house price growth (%/yr)</label><span class="val" id="v-gp"></span></div>
+        <div class="desc">Expected annual nominal appreciation. Short-run deviations from economic growth can persist 10+ years in supply-constrained markets.</div>
+        <input type="range" id="gp" min="-5" max="15" step="0.25" value="5">
+      </div>
+    </div>
+
+    <div class="tab-pane" id="pane-rent">
+      <div class="field">
+        <div class="field-header"><label>Gross rental yield (% of P/yr)</label><span class="val" id="v-R"></span></div>
+        <div class="desc">Annual gross rent for an equivalent furnished property as % of current price. Basis for imputed rent (rent saved by owning).</div>
+        <input type="range" id="R" min="1" max="15" step="0.25" value="6">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Building insurance (% of P/yr)</label><span class="val" id="v-ins"></span></div>
+        <div class="desc">Annual insurance as % of property value. Deducted from imputed rent because it is included in the landlord's rental charge.</div>
+        <input type="range" id="ins" min="0" max="3" step="0.1" value="1">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Maintenance (% of P/yr)</label><span class="val" id="v-m"></span></div>
+        <div class="desc">Annual cost to maintain property value in real terms. Covered by landlord when renting. May include owner-only property taxes.</div>
+        <input type="range" id="m" min="0" max="5" step="0.1" value="1">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Nominal rental growth (%/yr)</label><span class="val" id="v-gr"></span></div>
+        <div class="desc">Expected annual growth in imputed rents (GR&#8345;). In a mature economy often set equal to inflation (real growth = 0). Can exceed inflation in supply-constrained urban markets.</div>
+        <input type="range" id="gr" min="-5" max="15" step="0.25" value="5">
+      </div>
+    </div>
+
+    <div class="tab-pane" id="pane-rates">
+      <div class="field">
+        <div class="field-header"><label>Mortgage interest rate (%)</label><span class="val" id="v-rm"></span></div>
+        <div class="desc">Annual rate (r&#8337;). Fixed or assumed average over the holding period. Determines periodic payments and outstanding principal at sale.</div>
+        <input type="range" id="rm" min="0.5" max="15" step="0.25" value="6">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Discount rate / required return (%)</label><span class="val" id="v-rn"></span></div>
+        <div class="desc">Opportunity cost of capital (r&#8345;) — risk-free rate + risk/illiquidity premium for housing equity. Reflects forgone returns if the down payment were invested elsewhere. Higher LTV and shorter holding periods warrant a higher rate.</div>
+        <input type="range" id="rn" min="0.1" max="20" step="0.25" value="6">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Consumer price inflation (%/yr)</label><span class="val" id="v-pi"></span></div>
+        <div class="desc">Expected annual CPI. Inflation strongly favours ownership — it erodes mortgage debt in real terms and raises nominal imputed rents. Deflation reverses this; many purchases may never break even under sustained deflation.</div>
+        <input type="range" id="pi" min="-5" max="10" step="0.25" value="2">
+      </div>
+
+    </div>
+    <!-- Pledged-asset sliders: always in DOM, shown inside rates tab only when mode=pledged -->
+    <div id="pledged-fields" style="display:none;padding:0 1.25rem 1.25rem;">
+      <div style="font-size:11px;color:var(--text3);line-height:1.55;margin-bottom:10px;padding-top:0.75rem;border-top:1px solid var(--border2);">
+        Interest-only mortgage held open indefinitely &#8212; principal never repaid. The pledged amount is invested as bank collateral; you keep the net investment gain above the original pledge when it is released.
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Pledged collateral (% of P&#8320;)</label><span class="val" id="v-pledge">15%</span></div>
+        <div class="desc">Amount locked in an investment account as bank guarantee. Additional cash outflow at t=0. Typically 15% in Swiss-style nantissement mortgages.</div>
+        <input type="range" id="pledge" min="1" max="40" step="1" value="15">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Investment return on pledge (%/yr)</label><span class="val" id="v-pledge-ret">5%</span></div>
+        <div class="desc">Expected annual return on the pledged collateral portfolio. Net gain above the original pledged amount is returned to you at sale as an inflow.</div>
+        <input type="range" id="pledge-ret" min="0" max="15" step="0.25" value="5">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Guarantee lock-in period (years)</label><span class="val" id="v-pledge-yrs">15 yrs</span></div>
+        <div class="desc">How long the pledged collateral is locked as bank guarantee. Investment grows throughout this period (or the holding period if shorter).</div>
+        <input type="range" id="pledge-yrs" min="1" max="30" step="1" value="15">
+      </div>
+    </div>
+
+    <div class="tab-pane" id="pane-tax">
+      <div class="field">
+        <div class="field-header"><label>Tax on imputed rent (%)</label><span class="val" id="v-tir"></span></div>
+        <div class="desc">Rate of tax on rent saved by owning. Zero in most countries (UK, US) but not all — Switzerland taxes a notional rental value.</div>
+        <input type="range" id="tir" min="0" max="50" step="1" value="0">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Tax relief on mortgage interest (%)</label><span class="val" id="v-trmi"></span></div>
+        <div class="desc">Rate of tax relief reducing effective financing cost. Largely eliminated in UK and US. Benefits higher-rate taxpayers disproportionately.</div>
+        <input type="range" id="trmi" min="0" max="50" step="1" value="0">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Capital gains tax on sale (%)</label><span class="val" id="v-cgt"></span></div>
+        <div class="desc">CGT on nominal profit at resale. Zero for primary residence in many jurisdictions (UK, US main home exemption).</div>
+        <input type="range" id="cgt" min="0" max="40" step="1" value="0">
+      </div>
+      <div class="field">
+        <div class="field-header"><label>Marginal tax rate on investments (%)</label><span class="val" id="v-mtr"></span></div>
+        <div class="desc">Tax on income if capital were invested outside housing. Where imputed rent is untaxed, ownership is advantaged relative to taxable investments.</div>
+        <input type="range" id="mtr" min="0" max="55" step="1" value="0">
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Results -->
+  <div class="results-panel">
+
+    <div class="card">
+      <div class="card-title">NPV summary &#8212; holding period: <span id="r-period">&#8212;</span></div>
+      <div class="metrics">
+        <div class="metric"><div class="mlabel">Net present value</div><div class="mval" id="r-npv">&#8212;</div></div>
+        <div class="metric"><div class="mlabel">Breakeven IRR</div><div class="mval" id="r-irr">&#8212;</div></div>
+        <div class="metric"><div class="mlabel">PV total inflows</div><div class="mval" id="r-in">&#8212;</div></div>
+        <div class="metric"><div class="mlabel">PV total outflows</div><div class="mval" id="r-out">&#8212;</div></div>
+      </div>
+      <div class="spread-bar">
+        Spread (IR yield &#8722; discount rate):&nbsp;<span class="pill" id="r-spread">&#8212;</span>
+        &nbsp;&nbsp;Inflation:&nbsp;<span class="pill" id="r-pi-pill">&#8212;</span>
+      </div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">NPV across all holding periods</div>
+      <div class="chart-wrap"><canvas id="chart" width="600" height="230"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Cash flow breakdown</div>
+      <div class="breakdown-grid">
+        <div class="bsection">
+          <h3>Benefits (inflows)</h3>
+          <div class="brow"><span class="blab">PV imputed rent (PVIR)</span><span class="bnum" id="b-pvir">&#8212;</span></div>
+          <div class="brow"><span class="blab">PV net resale (PVNPt)</span><span class="bnum" id="b-pvnpt">&#8212;</span></div>
+          <div class="brow" id="brow-pledge-gain" style="display:none;"><span class="blab">Pledge investment gain</span><span class="bnum" id="b-pledge-gain">&#8212;</span></div>
+          <div class="brow total"><span class="blab">Total inflows</span><span class="bnum" id="b-in">&#8212;</span></div>
+        </div>
+        <div class="bsection">
+          <h3>Costs (outflows)</h3>
+          <div class="brow"><span class="blab">Down payment (DP)</span><span class="bnum" id="b-dp">&#8212;</span></div>
+          <div class="brow"><span class="blab">Purchase costs (PC)</span><span class="bnum" id="b-pc">&#8212;</span></div>
+          <div class="brow"><span class="blab">Furnishing (F)</span><span class="bnum" id="b-f">&#8212;</span></div>
+          <div class="brow"><span class="blab">PV mortgage interest</span><span class="bnum" id="b-pvmip">&#8212;</span></div>
+          <div class="brow"><span class="blab">PV mortgage principal</span><span class="bnum" id="b-pvmpp">&#8212;</span></div>
+          <div class="brow" id="brow-pledge-cost" style="display:none;"><span class="blab">Pledged collateral (t=0)</span><span class="bnum" id="b-pledge-cost">&#8212;</span></div>
+          <div class="brow" id="brow-interest-only" style="display:none;"><span class="blab">PV interest-only payments</span><span class="bnum" id="b-interest-only">&#8212;</span></div>
+          <div class="brow total"><span class="blab">Total outflows</span><span class="bnum" id="b-out">&#8212;</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="mc-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem;">
+        <div class="card-title" style="margin-bottom:0;">Monte Carlo simulation</div>
+        <button id="mc-run-btn" style="padding:5px 14px;font-size:12px;font-weight:500;border:1px solid var(--accent);border-radius:20px;background:var(--accent);color:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;">Run</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem;">
+        <div class="field" style="margin:0;">
+          <div class="field-header"><label>Simulations (n)</label><span class="val" id="v-mc-n">500</span></div>
+          <input type="range" id="mc-n" min="100" max="5000" step="100" value="500">
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;">
+          <p style="font-size:11px;color:var(--text3);line-height:1.5;">Each simulation draws random values around your base-case inputs. Set the standard deviation (&#963;) for each variable below.</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem;">
+        <div class="field" style="margin:0;">
+          <div class="field-header"><label>House price growth &#963; (%)</label><span class="val" id="v-mc-sd-gp">2%</span></div>
+          <div class="desc">Std. dev. around the base-case nominal house price growth rate.</div>
+          <input type="range" id="mc-sd-gp" min="0" max="10" step="0.5" value="2">
+        </div>
+        <div class="field" style="margin:0;">
+          <div class="field-header"><label>Inflation &#963; (%)</label><span class="val" id="v-mc-sd-pi">1%</span></div>
+          <div class="desc">Std. dev. around the base-case CPI inflation rate.</div>
+          <input type="range" id="mc-sd-pi" min="0" max="5" step="0.25" value="1">
+        </div>
+        <div class="field" style="margin:0;">
+          <div class="field-header"><label>Discount rate &#963; (%)</label><span class="val" id="v-mc-sd-rn">1.5%</span></div>
+          <div class="desc">Std. dev. around the base-case required return / discount rate.</div>
+          <input type="range" id="mc-sd-rn" min="0" max="5" step="0.25" value="1.5">
+        </div>
+        <div class="field" id="mc-sd-pr-field" style="margin:0;">
+          <div class="field-header"><label>Pledge return &#963; (%) <span style="font-size:10px;color:var(--text3);">pledged mode</span></label><span class="val" id="v-mc-sd-pr">2%</span></div>
+          <div class="desc">Std. dev. around the base-case investment return on the pledged collateral.</div>
+          <input type="range" id="mc-sd-pr" min="0" max="8" step="0.5" value="2">
+        </div>
+      </div>
+
+      <div id="mc-results" style="display:none;">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem;">
+          <div class="metric"><div class="mlabel">Buy wins (NPV &gt; 0)</div><div class="mval pos" id="mc-pct-pos">&#8212;</div></div>
+          <div class="metric"><div class="mlabel">Median NPV</div><div class="mval" id="mc-median">&#8212;</div></div>
+          <div class="metric"><div class="mlabel">NPV 5th&#8211;95th pct</div><div class="mval" style="font-size:13px;" id="mc-range">&#8212;</div></div>
+        </div>
+        <div style="position:relative;height:200px;">
+          <canvas id="mc-chart" width="600" height="200"></canvas>
+        </div>
+      </div>
+      <div id="mc-idle" style="font-size:12px;color:var(--text3);padding:0.5rem 0;">
+        Press <strong>Run</strong> to execute the simulation with current parameters.
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<input type="checkbox" id="pledged-on" style="display:none;">
+<footer>
+  Based on: Tabner, I.T. (2016). &#8220;Buying versus renting &#8211; Determinants of the net present value of home ownership for individual households.&#8221;
+  <em>International Review of Financial Analysis.</em> doi:&nbsp;10.1016/j.irfa.2016.10.004
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function () {
+
+  var chartInst = null;
+
+  /* ---- Mortgage mode switcher ---- */
+  var pledgedCheckbox = document.getElementById('pledged-on');
+  var pledgedFields   = document.getElementById('pledged-fields');
+  var btnStandard     = document.getElementById('mode-standard');
+  var btnPledged      = document.getElementById('mode-pledged');
+
+  function setMode(pledged) {
+    pledgedCheckbox.checked = pledged;
+    pledgedFields.style.display = pledged ? 'block' : 'none';
+    document.getElementById('field-mt').style.display = pledged ? 'none' : 'block';
+    btnStandard.className = 'mode-btn' + (pledged ? '' : ' mode-active');
+    btnPledged.className  = 'mode-btn' + (pledged ? ' mode-active' : '');
+    upd();
+  }
+
+  btnStandard.addEventListener('click', function () { setMode(false); });
+  btnPledged.addEventListener('click',  function () { setMode(true);  });
+
+  /* helpers */
+  function fmt(v) {
+    var sign = v < 0 ? '-$' : '$';
+    var abs = Math.abs(v);
+    if (abs >= 1e6) return sign + (abs / 1e6).toFixed(2) + 'M';
+    if (abs >= 1e3) return sign + Math.round(abs).toLocaleString();
+    return sign + Math.round(abs);
+  }
+  function fmtPct(v)       { return v.toFixed(2) + '%'; }
+  function fmtPctSgn(v)    { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+  function gv(id)           { return parseFloat(document.getElementById(id).value); }
+  function el(id)           { return document.getElementById(id); }
+
+  /* tab switching */
+  var tabBtns = document.querySelectorAll('.tab-btn');
+  tabBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      tabBtns.forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-pane').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      el('pane-' + btn.getAttribute('data-tab')).classList.add('active');
+    });
+  });
+
+  /* NPV calculation — standard repayment mode */
+  function calcNPVStandard(P0, ltv, pcPct, fPct, scPct, T, MT,
+                            RPct, insPct, mPct, tirPct, grN,
+                            cgtPct, trmiPct, rmR, rnR, gpN) {
+
+    var dp     = P0 * (1 - ltv);
+    var MP0    = P0 * ltv;
+    var pcCost = P0 * pcPct;
+    var fCost  = P0 * fPct;
+    var pvmp = 0, pvmpp = 0, mpt = 0;
+
+    if (T < 1) {
+      return { npv: -(dp + pcCost + fCost), pvcif: 0, pvcof: dp + pcCost + fCost,
+               pvir: 0, pvnpt: 0, dp: dp, pcCost: pcCost, fCost: fCost,
+               pvmip: 0, pvmpp: 0, pledgeCost: 0, pledgeGain: 0, pvInterestOnly: 0, isPledged: false };
+    }
+
+    if (MP0 > 1) {
+      var pmp  = MP0 * rmR / (1 - Math.pow(1 + rmR, -MT));
+      var pp1  = pmp - MP0 * rmR;
+      var tH   = Math.min(T, MT);
+      var rns  = Math.max(rnR, 0.0001);
+      var rms  = Math.max(rmR, 0.0001);
+      pvmp  = pmp * (1 - Math.pow(1 + rns, -tH)) / rns;
+      if (Math.abs(rns - rms) < 1e-8) {
+        pvmpp = pp1 * tH / (1 + rns);
+      } else {
+        pvmpp = pp1 * (1 - Math.pow((1 + rms) / (1 + rns), tH)) / (rns - rms);
+      }
+      pvmpp = Math.max(0, pvmpp);
+      var fvPP = pp1 * (Math.pow(1 + rms, tH) - 1) / rms;
+      mpt  = Math.max(0, MP0 - fvPP);
+    }
+
+    var PT     = P0 * Math.pow(1 + gpN, T);
+    var SC     = PT * scPct;
+    var cgtTax = Math.max(0, PT - P0) * cgtPct;
+    var NPT    = PT - SC - mpt - cgtTax;
+    var rns2   = Math.max(rnR, 0.0001);
+    var pvnpt  = NPT / Math.pow(1 + rns2, T);
+
+    var IR1 = P0 * (RPct - insPct - mPct) * (1 - tirPct);
+    var pvir;
+    if (Math.abs(rns2 - grN) < 1e-8) { pvir = IR1 * T; }
+    else { pvir = IR1 * (1 - Math.pow((1 + grN) / (1 + rns2), T)) / (rns2 - grN); }
+    pvir = Math.max(0, pvir);
+
+    var pvmip = Math.max(0, pvmp - pvmpp);
+    var pvcif = pvir + pvnpt;
+    var pvcof = dp + pcCost + fCost + pvmip + pvmpp;
+
+    return {
+      npv: pvcif - pvcof,
+      pvcif: pvcif, pvcof: pvcof,
+      pvir: pvir, pvnpt: pvnpt,
+      dp: dp, pcCost: pcCost, fCost: fCost,
+      pvmip: pvmip, pvmpp: pvmpp,
+      pledgeCost: 0, pledgeGain: 0, pvInterestOnly: 0, isPledged: false
+    };
+  }
+
+  /*
+   * NPV calculation — pledged-asset interest-only mortgage
+   *
+   * Structure:
+   *  t=0  outflows: dp (down payment) + pcCost + fCost + pledgeAmt (locked collateral)
+   *  t=1..T  outflows: annual interest = MP0 * rmR (interest only, no amortisation)
+   *  t=T  inflows:  net resale proceeds (full MP0 still outstanding, deducted from PT)
+   *                 + pledgeGain = pledgeFV - pledgeAmt  (investment gain returned to owner)
+   *  The pledge itself (pledgeAmt) offsets part of the outstanding debt at sale.
+   */
+  function calcNPVPledged(P0, ltv, pcPct, fPct, scPct, T,
+                           RPct, insPct, mPct, tirPct, grN,
+                           cgtPct, trmiPct, rmR, rnR, gpN,
+                           pledgePct, pledgeRet) {
+
+    var dp         = P0 * (1 - ltv);
+    var MP0        = P0 * ltv;
+    var pcCost     = P0 * pcPct;
+    var fCost      = P0 * fPct;
+    var pledgeAmt  = P0 * pledgePct;   // locked at t=0
+
+    if (T < 1) {
+      var earlyCof = dp + pcCost + fCost + pledgeAmt;
+      return { npv: -earlyCof, pvcif: 0, pvcof: earlyCof,
+               pvir: 0, pvnpt: 0, dp: dp, pcCost: pcCost, fCost: fCost,
+               pvmip: 0, pvmpp: 0, pledgeCost: pledgeAmt, pledgeGain: 0,
+               pvInterestOnly: 0, isPledged: true };
+    }
+
+    /* Interest-only payments: MP0 * rmR each year, discounted */
+    var rns      = Math.max(rnR, 0.0001);
+    var annInt   = MP0 * rmR;
+    var pvInterestOnly = annInt * (1 - Math.pow(1 + rns, -T)) / rns;
+
+    /* Pledge grows at pledgeRet over T years */
+    var pledgeFV   = pledgeAmt * Math.pow(1 + pledgeRet, T);
+    var pledgeGain = pledgeFV - pledgeAmt;   /* net gain returned to owner */
+    var pvPledgeGain = pledgeGain / Math.pow(1 + rns, T);
+
+    /*
+     * At sale: full MP0 is still outstanding.
+     * The pledge FV offsets part of the debt: net debt at sale = MP0 - pledgeFV (floor 0).
+     * Owner keeps any surplus pledgeFV above MP0 (unlikely if pledgePct < ltv).
+     */
+    var netDebtAtSale = Math.max(0, MP0 - pledgeFV);
+    var PT       = P0 * Math.pow(1 + gpN, T);
+    var SC       = PT * scPct;
+    var cgtTax   = Math.max(0, PT - P0) * cgtPct;
+    var NPT      = PT - SC - netDebtAtSale - cgtTax;
+    var pvnpt    = NPT / Math.pow(1 + rns, T);
+
+    /* Imputed rent (same as standard) */
+    var IR1  = P0 * (RPct - insPct - mPct) * (1 - tirPct);
+    var pvir;
+    if (Math.abs(rns - grN) < 1e-8) { pvir = IR1 * T; }
+    else { pvir = IR1 * (1 - Math.pow((1 + grN) / (1 + rns), T)) / (rns - grN); }
+    pvir = Math.max(0, pvir);
+
+    var pvcif = pvir + pvnpt + pvPledgeGain;
+    var pvcof = dp + pcCost + fCost + pledgeAmt + pvInterestOnly;
+
+    return {
+      npv: pvcif - pvcof,
+      pvcif: pvcif, pvcof: pvcof,
+      pvir: pvir, pvnpt: pvnpt,
+      dp: dp, pcCost: pcCost, fCost: fCost,
+      pvmip: 0, pvmpp: 0,
+      pledgeCost: pledgeAmt, pledgeGain: pvPledgeGain,
+      pvInterestOnly: pvInterestOnly, isPledged: true
+    };
+  }
+
+  /* Dispatcher */
+  function calcNPV(P0, ltv, pcPct, fPct, scPct, T, MT,
+                   RPct, insPct, mPct, tirPct, grN,
+                   cgtPct, trmiPct, rmR, rnR, gpN,
+                   isPledged, pledgePct, pledgeRet) {
+    if (isPledged) {
+      return calcNPVPledged(P0, ltv, pcPct, fPct, scPct, T,
+                            RPct, insPct, mPct, tirPct, grN,
+                            cgtPct, trmiPct, rmR, rnR, gpN,
+                            pledgePct, pledgeRet);
+    }
+    return calcNPVStandard(P0, ltv, pcPct, fPct, scPct, T, MT,
+                           RPct, insPct, mPct, tirPct, grN,
+                           cgtPct, trmiPct, rmR, rnR, gpN);
+  }
+
+  /* breakeven IRR via bisection */
+  function calcIRR(P0, ltv, pcPct, fPct, scPct, T, MT,
+                   RPct, insPct, mPct, tirPct, grN,
+                   cgtPct, trmiPct, rmR, gpN,
+                   isPledged, pledgePct, pledgeRet) {
+    function f(r) {
+      return calcNPV(P0, ltv, pcPct, fPct, scPct, T, MT, RPct, insPct, mPct,
+                     tirPct, grN, cgtPct, trmiPct, rmR, r, gpN,
+                     isPledged, pledgePct, pledgeRet).npv;
+    }
+    var lo = 0.0001, hi = 0.9;
+    var f0 = f(lo), fh = f(hi);
+    if (f0 * fh > 0) return f0 > 0 ? hi * 100 : lo * 100;
+    for (var i = 0; i < 80; i++) {
+      var mid = (lo + hi) / 2;
+      if (f(mid) * f0 < 0) hi = mid; else lo = mid;
+      if (hi - lo < 1e-8) break;
+    }
+    return ((lo + hi) / 2) * 100;
+  }
+
+  /* main update */
+  function upd() {
+    var P0      = gv('p0');
+    var ltv     = gv('ltv') / 100;
+    var pcPct   = gv('pc')  / 100;
+    var fPct    = gv('f')   / 100;
+    var scPct   = gv('sc')  / 100;
+    var T       = gv('T');
+    var MT      = gv('mt');
+    var RPct    = gv('R')   / 100;
+    var insPct  = gv('ins') / 100;
+    var mPct    = gv('m')   / 100;
+    var tirPct  = gv('tir') / 100;
+    var grN     = gv('gr')  / 100;
+    var cgtPct  = gv('cgt') / 100;
+    var trmiPct = gv('trmi')/ 100;
+    var rmR     = gv('rm')  / 100;
+    var rnR     = gv('rn')  / 100;
+    var piR     = gv('pi')  / 100;
+    var gpN     = gv('gp')  / 100;
+    var isPledged  = document.getElementById('pledged-on').checked;
+    var pledgePct  = gv('pledge')     / 100;
+    var pledgeRet  = gv('pledge-ret') / 100;
+    var pledgeYrs  = gv('pledge-yrs');
+
+    /* labels */
+    el('v-p0').textContent   = fmt(P0);
+    el('v-ltv').textContent  = gv('ltv') + '%';
+    el('v-T').textContent    = T + ' yr' + (T !== 1 ? 's' : '');
+    el('v-mt').textContent   = MT + ' yrs';
+    el('v-pc').textContent   = gv('pc').toFixed(2) + '%';
+    el('v-f').textContent    = gv('f').toFixed(2) + '%';
+    el('v-sc').textContent   = gv('sc').toFixed(2) + '%';
+    el('v-gp').textContent   = gv('gp').toFixed(2) + '%';
+    el('v-R').textContent    = gv('R').toFixed(2) + '%';
+    el('v-ins').textContent  = gv('ins').toFixed(1) + '%';
+    el('v-m').textContent    = gv('m').toFixed(1) + '%';
+    el('v-gr').textContent   = gv('gr').toFixed(2) + '%';
+    el('v-rm').textContent   = gv('rm').toFixed(2) + '%';
+    el('v-rn').textContent   = gv('rn').toFixed(2) + '%';
+    el('v-pi').textContent   = gv('pi').toFixed(2) + '%';
+    el('v-tir').textContent  = gv('tir') + '%';
+    el('v-trmi').textContent = gv('trmi') + '%';
+    el('v-cgt').textContent  = gv('cgt') + '%';
+    el('v-mtr').textContent  = gv('mtr') + '%';
+    el('r-period').textContent = T + ' year' + (T !== 1 ? 's' : '');
+    if (isPledged) {
+      el('v-pledge').textContent     = gv('pledge') + '%';
+      el('v-pledge-ret').textContent = gv('pledge-ret').toFixed(2) + '%';
+      el('v-pledge-yrs').textContent = pledgeYrs + ' yrs';
+    }
+
+    var res = calcNPV(P0, ltv, pcPct, fPct, scPct, T, MT, RPct, insPct, mPct,
+                      tirPct, grN, cgtPct, trmiPct, rmR, rnR, gpN,
+                      isPledged, pledgePct, pledgeRet);
+    var irr = calcIRR(P0, ltv, pcPct, fPct, scPct, T, MT, RPct, insPct, mPct,
+                      tirPct, grN, cgtPct, trmiPct, rmR, gpN,
+                      isPledged, pledgePct, pledgeRet);
+
+    var npvEl = el('r-npv');
+    npvEl.textContent = fmt(res.npv);
+    npvEl.className = 'mval ' + (res.npv > 500 ? 'pos' : res.npv < -500 ? 'neg' : '');
+    el('r-irr').textContent = fmtPct(irr);
+    el('r-in').textContent  = fmt(res.pvcif);
+    el('r-out').textContent = fmt(res.pvcof);
+
+    el('b-pvir').textContent  = fmt(res.pvir);
+    el('b-pvnpt').textContent = fmt(res.pvnpt);
+    el('b-in').textContent    = fmt(res.pvcif);
+    el('b-dp').textContent    = fmt(res.dp);
+    el('b-pc').textContent    = fmt(res.pcCost);
+    el('b-f').textContent     = fmt(res.fCost);
+    el('b-pvmip').textContent = fmt(res.pvmip);
+    el('b-pvmpp').textContent = fmt(res.pvmpp);
+    el('b-out').textContent   = fmt(res.pvcof);
+
+    /* Pledged mortgage rows — show/hide */
+    var showPledge = isPledged ? 'flex' : 'none';
+    var hidePledge = isPledged ? 'none' : 'flex';
+    el('brow-pledge-gain').style.display  = showPledge;
+    el('brow-pledge-cost').style.display  = showPledge;
+    el('brow-interest-only').style.display= showPledge;
+    if (isPledged) {
+      el('b-pledge-gain').textContent    = fmt(res.pledgeGain);
+      el('b-pledge-cost').textContent    = fmt(res.pledgeCost);
+      el('b-interest-only').textContent  = fmt(res.pvInterestOnly);
+    }
+    /* In pledged mode, hide standard mortgage rows */
+    var stdMortRow1 = el('b-pvmip').parentNode;
+    var stdMortRow2 = el('b-pvmpp').parentNode;
+    stdMortRow1.style.display = isPledged ? 'none' : 'flex';
+    stdMortRow2.style.display = isPledged ? 'none' : 'flex';
+
+    /* spread pills */
+    var netIRY = RPct - insPct - mPct - tirPct * (RPct - insPct - mPct);
+    var spread = (netIRY - rnR) * 100;
+    var sEl = el('r-spread');
+    sEl.textContent = fmtPctSgn(spread);
+    sEl.className = 'pill ' + (spread > 0.05 ? 'pos' : spread < -0.05 ? 'neg' : 'zero');
+
+    var piEl = el('r-pi-pill');
+    piEl.textContent = fmtPctSgn(piR * 100);
+    piEl.className = 'pill ' + (piR > 0.001 ? 'pos' : piR < -0.001 ? 'neg' : 'zero');
+
+    /* verdict */
+    var vEl = el('verdict');
+    if (res.npv > 1000) {
+      vEl.className = 'verdict buy';
+      vEl.textContent = 'Buying appears financially advantageous over this holding period. NPV = ' + fmt(res.npv) + '.';
+    } else if (res.npv < -1000) {
+      vEl.className = 'verdict rent';
+      vEl.textContent = 'Renting appears financially advantageous over this holding period. NPV = ' + fmt(res.npv) + '.';
+    } else {
+      vEl.className = 'verdict neutral';
+      vEl.textContent = 'Approximately at financial breakeven. Non-financial factors may be decisive.';
+    }
+
+    renderChart(P0, ltv, pcPct, fPct, scPct, T, MT, RPct, insPct, mPct,
+                tirPct, grN, cgtPct, trmiPct, rmR, rnR, gpN,
+                isPledged, pledgePct, pledgeRet);
+  }
+
+  /* chart — update data in-place after first render to avoid infinite resize loops */
+  function renderChart(P0, ltv, pcPct, fPct, scPct, T, MT,
+                       RPct, insPct, mPct, tirPct, grN,
+                       cgtPct, trmiPct, rmR, rnR, gpN,
+                       isPledged, pledgePct, pledgeRet) {
+    var maxY = Math.max(40, Math.ceil(T) + 4);
+    var labels = [], data = [], bgColors = [], bdColors = [];
+    for (var y = 0; y <= maxY; y++) {
+      var v = Math.round(calcNPV(P0, ltv, pcPct, fPct, scPct, y, MT, RPct, insPct, mPct,
+                                  tirPct, grN, cgtPct, trmiPct, rmR, rnR, gpN,
+                                  isPledged, pledgePct, pledgeRet).npv);
+      labels.push(y);
+      data.push(v);
+      bgColors.push(v >= 0 ? 'rgba(15,110,86,0.60)' : 'rgba(153,60,29,0.60)');
+      bdColors.push(v >= 0 ? '#0F6E56' : '#993C1D');
+    }
+
+    if (chartInst) {
+      chartInst.data.labels = labels;
+      chartInst.data.datasets[0].data       = data;
+      chartInst.data.datasets[0].backgroundColor = bgColors;
+      chartInst.data.datasets[0].borderColor    = bdColors;
+      chartInst.update('none');
+      return;
+    }
+
+    var ctx = el('chart').getContext('2d');
+    chartInst = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'NPV ($)',
+          data: data,
+          backgroundColor: bgColors,
+          borderColor: bdColors,
+          borderWidth: 0.5,
+          borderRadius: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: function (items) { return 'Year ' + items[0].label; },
+              label: function (item)  { return 'NPV: ' + fmt(item.raw); }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'Holding period (years)', color: '#9c9990', font: { size: 11 } },
+            ticks: { color: '#9c9990', font: { size: 10 }, maxTicksLimit: 15 },
+            grid: { color: 'rgba(0,0,0,0.05)' }
+          },
+          y: {
+            title: { display: true, text: 'NPV ($)', color: '#9c9990', font: { size: 11 } },
+            ticks: { color: '#9c9990', font: { size: 10 }, callback: function (v) { return fmt(v); } },
+            grid: { color: 'rgba(0,0,0,0.05)' }
+          }
+        }
+      }
+    });
+  }
+
+  /* wire sliders */
+  var sliders = document.querySelectorAll('input[type=range]');
+  sliders.forEach(function (s) { s.addEventListener('input', upd); });
+
+  /* ---- Monte Carlo ---- */
+  var mcChartInst = null;
+
+  /* Box-Muller normal sample */
+  function randn() {
+    var u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  }
+
+  /* Update MC slider labels on input */
+  ['mc-n','mc-sd-gp','mc-sd-pi','mc-sd-rn','mc-sd-pr'].forEach(function(id) {
+    var inp = document.getElementById(id);
+    if (!inp) return;
+    inp.addEventListener('input', function() {
+      var raw = parseFloat(inp.value);
+      if (id === 'mc-n') { el('v-mc-n').textContent = raw; }
+      else { el('v-' + id).textContent = raw.toFixed(raw % 1 === 0 ? 0 : 1) + '%'; }
+    });
+  });
+
+  document.getElementById('mc-run-btn').addEventListener('click', function() {
+    runMC();
+  });
+
+  function runMC() {
+    /* Read base-case params */
+    var P0      = gv('p0');
+    var ltv     = gv('ltv') / 100;
+    var pcPct   = gv('pc')  / 100;
+    var fPct    = gv('f')   / 100;
+    var scPct   = gv('sc')  / 100;
+    var T       = gv('T');
+    var MT      = gv('mt');
+    var RPct    = gv('R')   / 100;
+    var insPct  = gv('ins') / 100;
+    var mPct    = gv('m')   / 100;
+    var tirPct  = gv('tir') / 100;
+    var grN     = gv('gr')  / 100;
+    var cgtPct  = gv('cgt') / 100;
+    var trmiPct = gv('trmi')/ 100;
+    var rmR     = gv('rm')  / 100;
+    var rnR     = gv('rn')  / 100;
+    var gpN     = gv('gp')  / 100;
+    var piR     = gv('pi')  / 100;
+    var isPledged  = document.getElementById('pledged-on').checked;
+    var pledgePct  = gv('pledge')     / 100;
+    var pledgeRet  = gv('pledge-ret') / 100;
+
+    /* Std devs */
+    var sdGp = gv('mc-sd-gp') / 100;
+    var sdPi = gv('mc-sd-pi') / 100;
+    var sdRn = gv('mc-sd-rn') / 100;
+    var sdPr = gv('mc-sd-pr') / 100;
+    var N    = Math.round(gv('mc-n'));
+
+    var npvs = [];
+    for (var i = 0; i < N; i++) {
+      var gpSim  = gpN  + sdGp * randn();
+      var piSim  = piR  + sdPi * randn();
+      var rnSim  = Math.max(0.001, rnR + sdRn * randn());
+      var prSim  = isPledged ? Math.max(0, pledgeRet + sdPr * randn()) : pledgeRet;
+      /* Rental growth tracks inflation shock: grN adjusted by same delta */
+      var grSim  = grN + (piSim - piR);
+
+      var res = calcNPV(P0, ltv, pcPct, fPct, scPct, T, MT, RPct, insPct, mPct,
+                        tirPct, grSim, cgtPct, trmiPct, rmR, rnSim, gpSim,
+                        isPledged, pledgePct, prSim);
+      npvs.push(res.npv);
+    }
+
+    /* Sort for percentiles */
+    npvs.sort(function(a, b) { return a - b; });
+
+    var wins   = 0;
+    for (var j = 0; j < npvs.length; j++) { if (npvs[j] > 0) wins++; }
+    var pctPos = (wins / N * 100).toFixed(1);
+
+    var median = N % 2 === 0
+      ? (npvs[N/2 - 1] + npvs[N/2]) / 2
+      : npvs[Math.floor(N/2)];
+    var p5  = npvs[Math.floor(N * 0.05)];
+    var p95 = npvs[Math.floor(N * 0.95)];
+
+    el('mc-pct-pos').textContent = pctPos + '%';
+    el('mc-pct-pos').className = 'mval ' + (parseFloat(pctPos) >= 50 ? 'pos' : 'neg');
+    el('mc-median').textContent = fmt(median);
+    el('mc-median').className = 'mval ' + (median >= 0 ? 'pos' : 'neg');
+    el('mc-range').textContent = fmt(p5) + ' to ' + fmt(p95);
+
+    el('mc-results').style.display = 'block';
+    el('mc-idle').style.display    = 'none';
+
+    renderMCChart(npvs);
+  }
+
+  function renderMCChart(sortedNpvs) {
+    var N = sortedNpvs.length;
+    var minV = sortedNpvs[0];
+    var maxV = sortedNpvs[N - 1];
+    var BINS = 40;
+    var binW = (maxV - minV) / BINS || 1;
+
+    var counts = [];
+    var labels = [];
+    var colors = [];
+    for (var b = 0; b < BINS; b++) {
+      var lo = minV + b * binW;
+      var hi = lo + binW;
+      var cnt = 0;
+      for (var i = 0; i < N; i++) {
+        if (sortedNpvs[i] >= lo && sortedNpvs[i] < hi) cnt++;
+      }
+      counts.push(cnt);
+      labels.push(Math.round(lo));
+      colors.push(lo + binW > 0 ? 'rgba(15,110,86,0.65)' : 'rgba(153,60,29,0.65)');
+    }
+
+    if (mcChartInst) {
+      mcChartInst.data.labels = labels;
+      mcChartInst.data.datasets[0].data = counts;
+      mcChartInst.data.datasets[0].backgroundColor = colors;
+      mcChartInst.update('none');
+      return;
+    }
+
+    var ctx = el('mc-chart').getContext('2d');
+    mcChartInst = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Frequency',
+          data: counts,
+          backgroundColor: colors,
+          borderWidth: 0,
+          borderRadius: 1,
+          categoryPercentage: 1.0,
+          barPercentage: 0.95
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: function(items) { return 'NPV ~ ' + fmt(items[0].label); },
+              label: function(item)  { return 'Count: ' + item.raw; }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'NPV ($)', color: '#9c9990', font: { size: 11 } },
+            ticks: {
+              color: '#9c9990', font: { size: 9 },
+              maxTicksLimit: 10,
+              callback: function(val, idx) {
+                return idx % 4 === 0 ? fmt(this.getLabelForValue(val)) : '';
+              }
+            },
+            grid: { display: false }
+          },
+          y: {
+            title: { display: true, text: 'Frequency', color: '#9c9990', font: { size: 11 } },
+            ticks: { color: '#9c9990', font: { size: 10 } },
+            grid: { color: 'rgba(0,0,0,0.05)' }
+          }
+        }
+      }
+    });
+  }
+
+  /* initial render */
+  upd();
+
+})();
+</script>
+</body>
+</html>
